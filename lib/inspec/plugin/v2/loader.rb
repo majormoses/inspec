@@ -16,7 +16,14 @@ module Inspec::Plugin::V2
       @registry = Inspec::Plugin::V2::Registry.instance
       read_conf_file
       unpack_conf_file
+
+      # Old-style (v0, v1) co-distributed plugins were called 'bundles'
+      # and were located in lib/bundles
       detect_bundled_plugins unless options[:omit_bundles]
+
+      # New-style (v2) co-distributed plugins are in lib/plugins,
+      # and may be safely loaded
+      detect_core_plugins unless options[:omit_core_plugins]
     end
 
     def load_all
@@ -28,18 +35,20 @@ module Inspec::Plugin::V2
         # rubocop: disable Lint/RescueException
         begin
           # We could use require, but under testing, we need to repeatedly reload the same
-          # plugin.
-          if plugin_details.entry_point.include?('test/unit/mock/plugins')
-            load plugin_details.entry_point + '.rb'
-          else
-            activate_managed_gems_for_plugin(plugin_name) if plugin_details.installation_type == :gem
+          # plugin.  However, gems only work with require (rubygems dooes not overload `load`)
+          if plugin_details.installation_type == :gem
+            activate_managed_gems_for_plugin(plugin_name)
             require plugin_details.entry_point
+          else
+            load_path = plugin_details.entry_point
+            load_path += '.rb' unless plugin_details.entry_point.end_with?('.rb')
+            load load_path
           end
           plugin_details.loaded = true
           annotate_status_after_loading(plugin_name)
         rescue ::Exception => ex
           plugin_details.load_exception = ex
-          Inspec::Log.error "Could not load plugin #{plugin_name}"
+          Inspec::Log.error "Could not load plugin #{plugin_name}: #{ex.message}"
         end
         # rubocop: enable Lint/RescueException
       end
@@ -193,6 +202,20 @@ module Inspec::Plugin::V2
         status.installation_type = :bundle
         status.loaded = false
         registry[name] = status
+      end
+    end
+
+    def detect_core_plugins
+      core_plugins_dir = File.expand_path(File.join(File.dirname(__FILE__), '..', '..', '..', 'plugins'))
+      # These are expected to be organized as proper separate projects,
+      # with lib/ dirs, etc.
+      Dir.glob(File.join(core_plugins_dir, 'inspec-*')).each do |plugin_dir|
+        status = Inspec::Plugin::V2::Status.new
+        status.name = File.basename(plugin_dir)
+        status.entry_point = File.join(plugin_dir, 'lib', status.name + '.rb')
+        status.installation_type = :path
+        status.loaded = false
+        registry[status.name.to_sym] = status
       end
     end
 
