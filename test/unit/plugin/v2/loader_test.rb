@@ -25,11 +25,11 @@ class PluginLoaderTests < MiniTest::Test
 
     @config_dir_path = File.join(mock_path, 'config_dirs')
     @bundled_plugins = [
-      :artifact,
-      :compliance,
-      :habitat,
-      :init,
-      :supermarket,
+      :'inspec-artifact',
+      :'inspec-compliance',
+      :'inspec-habitat',
+      :'inspec-init',
+      :'inspec-supermarket',
      ]
      @core_plugins = [
      ]
@@ -215,7 +215,7 @@ class PluginLoaderTests < MiniTest::Test
     assert_nil activator.implementation_class, 'Test activator should not know implementation class prior to activation'
     refute InspecPlugins::MeaningOfLife.const_defined?(:MockPlugin), 'impl_class should not be defined prior to activation'
 
-    loader.activate(:mock_plugin_type, 'meaning-of-life-the-universe-and-everything')
+    loader.activate(:mock_plugin_type, :'meaning-of-life-the-universe-and-everything')
 
     # Activation postconditions
     assert activator.activated, 'Test activator should be activated after activate'
