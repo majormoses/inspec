@@ -343,6 +343,8 @@ Test Summary: \e[38;5;41m2 successful\e[0m, 0 failures, 0 skipped\n"
 
     it 'can run supermarket profiles from inspec.yml' do
       out = inspec("exec #{File.join(profile_path, 'supermarket-dep')} --no-create-lockfile")
+      require 'pry'
+      binding.pry
       if is_windows?
         out.stdout.force_encoding(Encoding::UTF_8).must_include "Profile Summary: \e[38;5;41m1 successful control\e[0m, \e[38;5;9m1 control failure\e[0m, 0 controls skipped\n"
       else
